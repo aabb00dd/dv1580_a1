@@ -99,11 +99,13 @@ void list_insert_before(Node** head, Node* next_node, uint16_t data)
         {
             current_node = current_node->next; // Find the node before next node
         }
+        // Insert the new node before next node
         if (current_node) 
         {
             new_node->next = current_node->next;  // Link new node to next node
             current_node->next = new_node;        // Insert before next node
-        } 
+        }
+        // Free memory if insertion point not found
         else 
         {
             mem_free(new_node); // Free if insertion point not found
