@@ -1,6 +1,5 @@
 #include "linked_list.h"
 
-
 /*
  Initializes the linked list.
  param: head Pointer to a pointer to the head of the linked list.
