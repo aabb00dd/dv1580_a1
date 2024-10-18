@@ -9,7 +9,7 @@
  */
 void list_init(Node** head, size_t size) 
 {
-    mem_init(size * head); // Initialize the memory manager
+    mem_init(size * sizeof(Node)); // Initialize the memory manager
     *head = NULL;   // Start with an empty list
 }
 
