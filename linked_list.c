@@ -1,5 +1,6 @@
 #include "linked_list.h"
 
+
 /*
  Initializes the linked list.
  param: head Pointer to a pointer to the head of the linked list.
@@ -8,7 +9,7 @@
  */
 void list_init(Node** head, size_t size) 
 {
-    mem_init(size); // Initialize the memory manager
+    mem_init(size * head); // Initialize the memory manager
     *head = NULL;   // Start with an empty list
 }
 
