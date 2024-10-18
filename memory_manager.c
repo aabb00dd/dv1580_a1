@@ -41,8 +41,6 @@ void* mem_alloc(size_t size)
 {
     if (size == 0) return NULL;    // Requested size is zero
 
-    // Align size to 8 bytes (mod 8)
-    size = (size + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
     // Pointers to traverse and track the free list
     Block *current_block = free_list, *prev_block = NULL;
 
