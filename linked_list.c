@@ -186,7 +186,7 @@ void list_display(Node** head)
     // Check if head or list is empty
     if (!head || !*head) 
     {
-        printf("[]\0"); // Print an empty list
+        printf("[]"); // Print an empty list
         return;
     }
 
@@ -201,7 +201,7 @@ void list_display(Node** head)
         if (current_node) printf(", ");         // Print a comma if not the last element
     }
 
-    printf("]\0");
+    printf("]");
 }
 
 
@@ -217,7 +217,7 @@ void list_display_range(Node** head, Node* start_node, Node* end_node)
     // Check if head or list is empty
     if (!head || !*head) 
     {
-        printf("[]\0"); // Print an empty list
+        printf("[]"); // Print an empty list
         return;
     }
 
@@ -243,7 +243,7 @@ void list_display_range(Node** head, Node* start_node, Node* end_node)
         current_node = current_node->next;          // Move to the next node
     }
 
-    printf("]\0");
+    printf("]");
 }
 
 
