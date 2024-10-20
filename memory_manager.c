@@ -1,8 +1,8 @@
 #include "memory_manager.h"
 
-static char *memory_pool = NULL;      // Pointer to the memory pool for data
-static char *header_pool = NULL;      // Pointer to the memory pool for headers (Block structures)
-static Block *free_list = NULL;       // Pointer to the list of free blocks
+static char *memory_pool = NULL;     // Pointer to the memory pool for data
+static char *header_pool = NULL;     // Pointer to the memory pool for headers (Block structures)
+static Block *free_list = NULL;      // Pointer to the list of free blocks
 
 // Size of the header pool (can be adjusted as needed)
 #define HEADER_POOL_SIZE 1024
@@ -15,7 +15,7 @@ static Block *free_list = NULL;       // Pointer to the list of free blocks
  */
 void mem_init(size_t size) 
 {
-    memory_pool = (char*)malloc(size);        // Allocate memory for the data pool
+    memory_pool = (char*)malloc(size);           // Allocate memory for the data pool
     header_pool = (char*)malloc(HEADER_POOL_SIZE);  // Allocate memory for the header pool
 
     // Exit if memory allocation fails
@@ -24,11 +24,11 @@ void mem_init(size_t size)
         exit(EXIT_FAILURE);
     }
 
-    // Initialize the free block
-    free_list = (Block*)header_pool;          // Set the free list to the start of the header pool
-    free_list->size_of_block = size;          // Entire pool size
-    free_list->is_free = 1;                   // Mark as free
-    free_list->next_block = NULL;             // No next block
+    // Initialize the free block list at the start of the data pool
+    free_list = (Block*)header_pool;             // Set the free list to the start of the header pool
+    free_list->size_of_block = size - sizeof(Block); // Set the entire data pool size for the first block (subtracting header size)
+    free_list->is_free = 1;                      // Mark as free
+    free_list->next_block = NULL;                // No next block
 }
 
 /*
@@ -41,6 +41,9 @@ void* mem_alloc(size_t size)
 {
     if (size == 0) return NULL;    // Requested size is zero
 
+    // Ensure that size accounts for the header (Block)
+    size_t total_size = size + sizeof(Block);
+
     // Pointers to traverse and track the free list
     Block *current_block = free_list, *prev_block = NULL;
 
@@ -48,28 +51,24 @@ void* mem_alloc(size_t size)
     while (current_block) 
     {
         // Check if the current block is free and can accommodate the requested size.
-        if (current_block->is_free && current_block->size_of_block >= size) 
+        if (current_block->is_free && current_block->size_of_block >= total_size) 
         {
             // If the current block is larger than needed, split it into two blocks.
-            if (current_block->size_of_block > size) 
+            if (current_block->size_of_block >= total_size + sizeof(Block)) 
             {
-                // Allocate a new block from the header pool for the split block
-                Block *new_block = (Block*)(header_pool + (current_block - (Block*)header_pool) + size + sizeof(Block));
-                new_block->size_of_block = current_block->size_of_block - size;           // Set size of the new block
-                new_block->is_free = 1;                                                  // Mark as free
-                new_block->next_block = current_block->next_block;                       // Link the new block to the next one in the list
-                current_block->size_of_block = size;                                     // Adjust the current block to the requested size
-                current_block->next_block = new_block;                                   // Link the current block to the newly created one
+                // Calculate where the new block will start (after the allocated memory)
+                Block *new_block = (Block*)((char*)current_block + total_size);
+                new_block->size_of_block = current_block->size_of_block - total_size; // Size of the remaining block
+                new_block->is_free = 1;                                              // Mark the new block as free
+                new_block->next_block = current_block->next_block;                   // Link the new block to the next one in the list
+                current_block->size_of_block = size;                                 // Adjust the current block to the requested size
+                current_block->next_block = new_block;                               // Link the current block to the newly created one
             }
 
-            current_block->is_free = 0; // Mark as not free
+            // Mark the current block as allocated (not free)
+            current_block->is_free = 0;
 
-            // Link the previous block to the next block if there is one.
-            if (prev_block) prev_block->next_block = current_block->next_block;
-            // If no previous block, this becomes the new head of the free list.
-            else free_list = current_block->next_block;
-
-            // Return a pointer to the allocated memory block
+            // Return a pointer to the allocated memory (skipping over the block header)
             return (char*)current_block + sizeof(Block);
         }
 
@@ -90,22 +89,23 @@ void mem_free(void* block)
 {
     if (!block) return;    // Attempted to free a NULL pointer
 
-    // Get the block to free
+    // Get the block header by moving back from the data pointer
     Block* block_to_free = (Block*)((char*)block - sizeof(Block));
 
-    // Attempted to free an already freed block
+    // If the block is already free, return
     if (block_to_free->is_free) return;
 
     // Mark the block as free
     block_to_free->is_free = 1;
+
     // Pointers to traverse and track the free list
     Block *current_block = free_list, *prev_block = NULL;
 
     // Find the correct position to insert the freed block in the free list
     while (current_block && current_block < block_to_free) 
     {
-        prev_block = current_block;                     // Track the previous block
-        current_block = current_block->next_block;      // Move to the next block
+        prev_block = current_block;               // Track the previous block
+        current_block = current_block->next_block; // Move to the next block
     }
 
     // Insert the freed block into the free list
@@ -113,21 +113,22 @@ void mem_free(void* block)
 
     // Link the previous block to the freed block
     if (prev_block) prev_block->next_block = block_to_free;
-    // If no previous block, this becomes the new head of the free list.
     else free_list = block_to_free;
 
     // Merge with the next block if they are contiguous
-    if (block_to_free->next_block && (char*)block_to_free + sizeof(Block) + block_to_free->size_of_block == (char*)block_to_free->next_block) 
+    if (block_to_free->next_block && 
+        (char*)block_to_free + sizeof(Block) + block_to_free->size_of_block == (char*)block_to_free->next_block) 
     {
-        block_to_free->size_of_block += sizeof(Block) + block_to_free->next_block->size_of_block;              // Merge the two blocks
-        block_to_free->next_block = block_to_free->next_block->next_block;                                     // Update the next pointer
+        block_to_free->size_of_block += sizeof(Block) + block_to_free->next_block->size_of_block;  // Merge the two blocks
+        block_to_free->next_block = block_to_free->next_block->next_block;                        // Update the next pointer
     }
 
     // Merge with the previous block if they are contiguous
-    if (prev_block && (char*)prev_block + sizeof(Block) + prev_block->size_of_block == (char*)block_to_free) 
+    if (prev_block && 
+        (char*)prev_block + sizeof(Block) + prev_block->size_of_block == (char*)block_to_free) 
     {
-        prev_block->size_of_block += sizeof(Block) + block_to_free->size_of_block;              // Merge the two blocks
-        prev_block->next_block = block_to_free->next_block;                                     // Update the next pointer
+        prev_block->size_of_block += sizeof(Block) + block_to_free->size_of_block;  // Merge the two blocks
+        prev_block->next_block = block_to_free->next_block;                        // Update the next pointer
     }
 }
 
