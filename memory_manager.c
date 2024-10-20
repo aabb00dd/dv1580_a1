@@ -1,4 +1,5 @@
 #include "memory_manager.h"
+#include <stdio.h>
 
 static char *memory_pool = NULL;      // Pointer to the memory pool for data
 static char *header_pool = NULL;      // Pointer to the memory pool for headers (Block structures)
