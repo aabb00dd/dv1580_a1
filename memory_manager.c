@@ -4,9 +4,6 @@ static char *memory_pool = NULL;      // Pointer to the memory pool for data
 static char *header_pool = NULL;      // Pointer to the memory pool for headers (Block structures)
 static Block *free_list = NULL;       // Pointer to the list of free blocks
 
-// Size of the header pool (can be adjusted as needed)
-#define HEADER_POOL_SIZE 1024
-
 /*
  Initializes the memory manager by allocating pools of memory.
  param: size The total size of the memory pool to be created for data.
@@ -16,7 +13,7 @@ static Block *free_list = NULL;       // Pointer to the list of free blocks
 void mem_init(size_t size) 
 {
     memory_pool = (char*)malloc(size);        // Allocate memory for the data pool
-    header_pool = (char*)malloc(HEADER_POOL_SIZE);  // Allocate memory for the header pool
+    header_pool = (char*)malloc(size);  // Allocate memory for the header pool
 
     // Exit if memory allocation fails
     if (!memory_pool || !header_pool) 
