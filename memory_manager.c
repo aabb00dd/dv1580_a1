@@ -133,6 +133,40 @@ void mem_free(void* block)
 }
 
 /*
+ Resizes a memory block to the specified size.
+ param: block Pointer to the memory block to be resized.
+ param: size The new size for the memory block in bytes.
+ return: A pointer to the resized memory block, or NULL if the resizing operation fails.
+ */
+void* mem_resize(void* block, size_t size) 
+{
+    if (!block) return mem_alloc(size);    // If block is NULL, allocate new
+
+    // If size is zero, free the block
+    if (size == 0) 
+    {
+        mem_free(block);
+        return NULL;
+    }
+
+    // Get the old block and check if it's big enough
+    Block* old_block = (Block*)((char*)block - sizeof(Block));
+    if (old_block->size_of_block >= size) return block;
+
+    // Allocate a new block of the requested size
+    void* new_block = mem_alloc(size);
+
+    // Copy the old data to the new block and free the old block
+    if (new_block) 
+    {
+        memcpy(new_block, block, old_block->size_of_block);  // Copy old data to new block
+        mem_free(block);                                     // Free the old block
+    }
+    
+    return new_block; // Return the new block
+}
+
+/*
  Deinitializes the memory manager and frees the memory pools.
  note: This function should be called when memory management is no longer needed.
  */
