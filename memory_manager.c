@@ -39,7 +39,7 @@ void mem_init(size_t size)
  */
 void* mem_alloc(size_t size) 
 {
-    if (size == 0) return NULL;    // Requested size is zero
+    if (size == 0) return free_list;    // Requested size is zero
 
     // Pointers to traverse and track the free list
     Block *current_block = free_list, *prev_block = NULL;
