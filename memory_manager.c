@@ -1,41 +1,41 @@
 #include "memory_manager.h"
 
+static char *memory_pool = NULL;      // Pointer to the memory pool for data
+static char *header_pool = NULL;      // Pointer to the memory pool for headers (Block structures)
+static Block *free_list = NULL;       // Pointer to the list of free blocks
 
-static char *memory_pool = NULL;    // Pointer to the memory pool
-static Block *free_list = NULL;     // Pointer to the list of free blocks
-
+// Size of the header pool (can be adjusted as needed)
+#define HEADER_POOL_SIZE 1024
 
 /*
- Initializes the memory manager by allocating a pool of memory.
- param: size The total size of the memory pool to be created.
- This function allocates memory for the pool and sets up the free list.
+ Initializes the memory manager by allocating pools of memory.
+ param: size The total size of the memory pool to be created for data.
+ This function allocates memory for both the data pool and the header pool, and sets up the free list.
  note: Exits the program if memory allocation fails.
  */
 void mem_init(size_t size) 
 {
-    memory_pool = (char*)malloc(size); // Allocate memory for the pool
+    memory_pool = (char*)malloc(size);        // Allocate memory for the data pool
+    header_pool = (char*)malloc(HEADER_POOL_SIZE);  // Allocate memory for the header pool
 
     // Exit if memory allocation fails
-    if (!memory_pool) 
+    if (!memory_pool || !header_pool) 
     {
         exit(EXIT_FAILURE);
     }
 
     // Initialize the free block
-    free_list = (Block*)memory_pool; // Set the free list to the start of the pool
-    free_list->size_of_block = size; // Entire pool size
-    free_list->is_free = 1;          // Mark as free
-    free_list->next_block = NULL;    // No next block
+    free_list = (Block*)header_pool;          // Set the free list to the start of the header pool
+    free_list->size_of_block = size;          // Entire pool size
+    free_list->is_free = 1;                   // Mark as free
+    free_list->next_block = NULL;             // No next block
 }
-
 
 /*
  Allocates a block of memory of at least the specified size.
  The allocation uses first-fit strategy to find a suitable free block.
  param: size The size of the memory block to allocate in bytes.
  return: Pointer to the allocated memory, or NULL if allocation fails.
- note: Returns NULL if the requested size is zero or if no suitable
- free block is found.
  */
 void* mem_alloc(size_t size) 
 {
@@ -47,18 +47,19 @@ void* mem_alloc(size_t size)
     // Find a free block that fits the requested size
     while (current_block) 
     {
-        // Check if the current_block block is free and can accommodate the requested size.
+        // Check if the current block is free and can accommodate the requested size.
         if (current_block->is_free && current_block->size_of_block >= size) 
         {
-            // If the current_block block is larger than needed, split it into two blocks.
+            // If the current block is larger than needed, split it into two blocks.
             if (current_block->size_of_block > size) 
             {
-                Block *new_block = (Block*)((char*)current_block + sizeof(Block) + size); // Create a new block after the allocated block.
-                new_block->size_of_block = current_block->size_of_block - size;           // Set size of the new block.
-                new_block->is_free = 1;                                                   // Mark as free
-                new_block->next_block = current_block->next_block;                        // Link the new block to the next one in the list.
-                current_block->size_of_block = size;                                      // Adjust the current block to the requested size.
-                current_block->next_block = new_block;                                    // Link the current block to the newly created one.
+                // Allocate a new block from the header pool for the split block
+                Block *new_block = (Block*)(header_pool + (current_block - (Block*)header_pool) + sizeof(Block) + size);
+                new_block->size_of_block = current_block->size_of_block - size;           // Set size of the new block
+                new_block->is_free = 1;                                                  // Mark as free
+                new_block->next_block = current_block->next_block;                       // Link the new block to the next one in the list
+                current_block->size_of_block = size;                                     // Adjust the current block to the requested size
+                current_block->next_block = new_block;                                   // Link the current block to the newly created one
             }
 
             current_block->is_free = 0; // Mark as not free
@@ -79,7 +80,6 @@ void* mem_alloc(size_t size)
 
     return NULL; // No suitable block found
 }
-
 
 /*
  Frees a previously allocated memory block.
@@ -131,49 +131,15 @@ void mem_free(void* block)
     }
 }
 
-
 /*
- Resizes a memory block to the specified size.
- param: block Pointer to the memory block to be resized.
- param: size The new size for the memory block in bytes.
- return: A pointer to the resized memory block, or NULL if the resizing operation fails.
- */
-void* mem_resize(void* block, size_t size) 
-{
-    if (!block) return mem_alloc(size);    // If block is NULL, allocate new
-
-    // If size is zero, free the block
-    if (size == 0) 
-    {
-        mem_free(block);
-        return NULL;
-    }
-
-    // Get the old block and check if it's big enough
-    Block* old_block = (Block*)((char*)block - sizeof(Block));
-    if (old_block->size_of_block >= size) return block;
-
-    // Allocate a new block of the requested size
-    void* new_block = mem_alloc(size);
-
-    // Copy the old data to the new block and free the old block
-    if (new_block) 
-    {
-        memcpy(new_block, block, old_block->size_of_block);  // Copy old data to new block
-        mem_free(block);                                     // Free the old block
-    }
-    
-    return new_block; // Return the new block
-}
-
-
-/*
- Deinitializes the memory manager and frees the memory pool.
+ Deinitializes the memory manager and frees the memory pools.
  note: This function should be called when memory management is no longer needed.
  */
 void mem_deinit() 
 {
-    free(memory_pool);  // Free the memory pool
+    free(memory_pool);  // Free the data memory pool
+    free(header_pool);  // Free the header memory pool
     memory_pool = NULL; // Reset the memory pool pointer
+    header_pool = NULL; // Reset the header pool pointer
     free_list = NULL;   // Reset the free list pointer
 }
