@@ -54,7 +54,7 @@ void* mem_alloc(size_t size)
             if (current_block->size_of_block > size) 
             {
                 // Allocate a new block from the header pool for the split block
-                Block *new_block = (Block*)(header_pool + (current_block - (Block*)header_pool) + size);
+                Block *new_block = (Block*)(header_pool + (current_block - (Block*)header_pool) + size + sizeof(Block));
                 new_block->size_of_block = current_block->size_of_block - size;           // Set size of the new block
                 new_block->is_free = 1;                                                  // Mark as free
                 new_block->next_block = current_block->next_block;                       // Link the new block to the next one in the list
